@@ -12,20 +12,28 @@ class cv2fcr:
     def __init__(self):
         self.stream = None
         self.net = cv2.dnn.readNet("data/ocv2fcr.pb", "data/ocv2fcr.pbtxt")
-        rth = ReturnableThread(self.cv2fcrLoadFaces())
-        rth.start()
-        rth.join()
-        self.faces = rth.res
+        self.faces = self.cv2fcrLoadFaces()
+        self.t_faces = self.cv2fcrFacesTableView()
 
     def cv2fcrLoadFaces(self):
-        data, e = loadFaces()
+        rth = ReturnableThread(loadFaces())
+        rth.start()
+        rth.join()
+        data, e = rth.res
         if e:
             print(repr(e))
         else:
             return data
 
+    def cv2fcrFacesTableView(self):
+        table = []
+        for i in self.faces.keys():
+            table.append([i, self.faces[i]['shape'], self.faces[i]['proto'], self.faces[i]['name'].encode('cp1251').decode('utf-8'), self.faces[i]['similar']])
+        return table
+
     def cv2fcrUpdateFaces(self):
         self.faces = self.cv2fcrLoadFaces()
+        self.t_faces = self.cv2fcrFacesTableView()
 
     def cv2FaceRecognition(self, frame, tresh=0.85):
         try:
@@ -129,6 +137,7 @@ class cv2fcr:
         obj['similar'].append(f'{path}\\{id_s}.jpg')
 
     def cv2StreamFCR(self):
+        count = 0
         self.stream = cv2.VideoCapture(0)
         while cv2.waitKey(1)<0:
             # получаем очередной кадр с камеры
@@ -139,6 +148,7 @@ class cv2fcr:
                 cv2.waitKey()
                 break
             # распознаём лица в кадре
+            count += 1
             resultImg, face, faceBoxes, e = self.cv2FaceRecognition(frame)
             if e:
                 print(e)
@@ -146,8 +156,11 @@ class cv2fcr:
             else:
                 # Если лицо есть
                 if faceBoxes:
-                    res, e = self.cv2FaceCollect(face)
-                    self.cv2fcrUpdateFaces()
+                    if count%10 == 0:
+                        res, e = self.cv2FaceCollect(face)
+                        self.cv2fcrUpdateFaces()
+                    else:
+                        res = None
                     if e:
                         print(e)
                     else:
@@ -160,6 +173,3 @@ class cv2fcr:
                     pass
                 # выводим картинку с камеры
                 cv2.imshow("Face detection", resultImg)
-
-cv2fcrDaemon = cv2fcr()
-cv2fcrDaemon.cv2StreamFCR()
