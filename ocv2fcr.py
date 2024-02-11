@@ -136,6 +136,16 @@ class cv2fcr:
         cv2.imwrite(f'{path}\\{id_s}.jpg', frame)
         obj['similar'].append(f'{path}\\{id_s}.jpg')
 
+    def cv2MergePersons(self, data):
+        proto = data[0]
+        for i in data[1:]:
+            proto[4].append(i[2])
+            proto[4] += i[4]
+            del self.faces[i[0]]
+        self.faces[proto[0]] = {"shape": proto[1], "proto": proto[2], "name": proto[3].encode('utf-8').decode('cp1251'), "similar": proto[4]}
+        saveFaces(self.faces)
+        self.cv2fcrUpdateFaces()
+
     def cv2StreamFCR(self):
         count = 0
         self.stream = cv2.VideoCapture(0)

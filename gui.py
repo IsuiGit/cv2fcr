@@ -1,4 +1,4 @@
-import ocv2fcr, cv2
+import ocv2fcr, cv2, keyboard
 import PySimpleGUI as sg
 
 class cv2fcrGUI:
@@ -22,18 +22,32 @@ class cv2fcrGUI:
                     enable_events = True,
                     key = '-MERGE_TABLE-',
                     row_height = 50,
+                    select_mode = 'extended'
                 ),
             ],
+            [sg.Button("Merge choosen")]
         ]
-
         merge_window = sg.Window('Detections merge', layout, resizable=True, finalize=True)
+        keyboard.get_hotkey_name()
+        multiple = []
         while True:
             event, values = merge_window.read(timeout=20)
             if event == "Exit" or event == sg.WIN_CLOSED:
                 break
             elif event == '-MERGE_TABLE-':
-                index = values['-MERGE_TABLE-'][0]
-                print(self.daemon.t_faces[index])
+                if keyboard.is_pressed('ctrl'):
+                    multiple = []
+                    index = values['-MERGE_TABLE-']
+                    for i in index:
+                        multiple.append(self.daemon.t_faces[i])
+                else:
+                    index = values['-MERGE_TABLE-'][0]
+                    multiple = [self.daemon.t_faces[index]]
+            elif event == 'Merge choosen':
+                if not multiple:
+                    print('No choosed person')
+                else:
+                    self.daemon.cv2MergePersons(multiple)
 
     def main(self):
         layout = [
@@ -47,7 +61,7 @@ class cv2fcrGUI:
             event, values = window.read(timeout=20)
             if event == "Exit" or event == sg.WIN_CLOSED:
                 break
-            elif event == "Merge":
+            elif event == "Merge" and self.daemon.faces:
                 self.merge()
             hasFrame, frame = self.stream.read()
             # если кадра нет
