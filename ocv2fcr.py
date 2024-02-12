@@ -35,6 +35,13 @@ class cv2fcr:
         self.faces = self.cv2fcrLoadFaces()
         self.t_faces = self.cv2fcrFacesTableView()
 
+    def cv2fcrSaveFaces(self):
+        res, e = saveFaces(self.faces)
+        if res:
+            return True
+        else:
+            return e
+
     def cv2FaceRecognition(self, frame, tresh=0.85):
         try:
             # Получаем высоту и ширину

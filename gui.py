@@ -1,5 +1,6 @@
-import ocv2fcr, cv2, keyboard
+import ocv2fcr, cv2, keyboard, io
 import PySimpleGUI as sg
+from PIL import Image
 
 class cv2fcrGUI:
     def __init__(self):
@@ -25,7 +26,7 @@ class cv2fcrGUI:
                     select_mode = 'extended'
                 ),
             ],
-            [sg.Button("Merge choosen")]
+            [sg.Button("Merge choosen"), sg.Button("Edit")]
         ]
         merge_window = sg.Window('Detections merge', layout, resizable=True, finalize=True)
         keyboard.get_hotkey_name()
@@ -41,13 +42,44 @@ class cv2fcrGUI:
                     for i in index:
                         multiple.append(self.daemon.t_faces[i])
                 else:
-                    index = values['-MERGE_TABLE-'][0]
-                    multiple = [self.daemon.t_faces[index]]
+                    try:
+                        index = values['-MERGE_TABLE-'][0]
+                        multiple = [self.daemon.t_faces[index]]
+                    except:
+                        pass
             elif event == 'Merge choosen':
                 if not multiple:
                     print('No choosed person')
                 else:
                     self.daemon.cv2MergePersons(multiple)
+                    merge_window['-MERGE_TABLE-'].update(values=self.daemon.t_faces)
+            elif event == 'Edit':
+                self.edit(self.daemon.t_faces[values['-MERGE_TABLE-'][0]])
+
+    def edit(self, data):
+        layout = [
+            [sg.Image(filename='', key='-IMAGE-')],
+            [sg.Text(data[0], expand_x=True, justification='center')],
+            [sg.Input(data[3], enable_events=True, key='-INPUT-', expand_x=True, justification='left')],
+            [sg.Button("Save", size=(10, 1))],
+        ]
+        edit_window = sg.Window(f'Edit {data[0]}', layout, resizable=True, finalize=True)
+        image = Image.open(data[2])
+        image.thumbnail((400, 400))
+        bio = io.BytesIO()
+        image.save(bio, format="PNG")
+        edit_window["-IMAGE-"].update(data=bio.getvalue())
+        while True:
+            event, values = edit_window.read(timeout=20)
+            if event == 'Exit' or event == sg.WIN_CLOSED:
+                break
+            elif event == 'Save':
+                self.daemon.faces[data[0]]['name'] = values['-INPUT-'].encode('utf-8').decode('cp1251')
+                res = self.daemon.cv2fcrSaveFaces()
+                if res == True:
+                    sg.popup_no_buttons('Changes saved!', non_blocking=True)
+                else:
+                    sg.popup_no_buttons(res, non_blocking=True)
 
     def main(self):
         layout = [
